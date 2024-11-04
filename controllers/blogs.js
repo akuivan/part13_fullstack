@@ -1,3 +1,5 @@
+require('express-async-errors')
+
 const router = require('express').Router()
 
 const { Blog } = require('../models')
@@ -7,32 +9,32 @@ const blogFinder = async (req, res, next) => {
     next()
 }
 
+const errorHandler = (err, req, res, next) => {
+    console.error(err);
+    const status = err.status || 500; // Default to 500 if no status is set
+    const message = err.message || 'Internal Server Error';
+    res.status(status).json({ error: message });
+};
+
+
 router.get('/', async (req, res) => {
     const blogs = await Blog.findAll()
     res.json(blogs)
 })
 
 router.post('/', async (req, res) => {
-    try {
-        console.log(req.body)
-        const blog = await Blog.create(req.body)
-        return res.json(blog)
-      } catch(error) {
-        return res.status(400).json({ error })
-      }
+    const blog = await Blog.create(req.body)
+    return res.json(blog)   
 })
 
 router.delete('/:id', blogFinder, async (req, res) => {
-    try {
-        if (!req.blog) {
-            return res.status(404).json({ error: 'Blog not found'})
-        }
-
+    if (req.blog) {
         await req.blog.destroy()
-        res.status(204).end()
-    } catch (error) {
-        console.error(error)
-        res.status(500).json({ error: 'An error occurred while deleting the blog'})
+        res.status(204).end()            
+    } else {
+        const error = new Error('Blog not found');
+        error.status = 404;
+        throw error;
     }
 })
 
@@ -42,8 +44,12 @@ router.put('/:id', blogFinder, async (req, res) => {
         await req.blog.save()
         res.json(req.blog)
     } else {
-        res.status(404).json({ error: 'Blog not found'})
+        const error = new Error('Blog not found');
+        error.status = 404;
+        throw error;
     }
 })
+
+router.use(errorHandler);
 
 module.exports = router
