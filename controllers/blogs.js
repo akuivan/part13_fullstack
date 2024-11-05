@@ -50,10 +50,17 @@ router.post('/', tokenExtractor, async (req, res) => {
     }
 })
 
-router.delete('/:id', blogFinder, async (req, res) => {
+router.delete('/:id', tokenExtractor, blogFinder, async (req, res) => {
     if (req.blog) {
-        await req.blog.destroy()
-        res.status(204).end()            
+        // Check if the requesting user is the same as the blog's user
+        if (req.blog.userId === req.decodedToken.id) {
+            await req.blog.destroy()
+            res.status(204).end()
+        } else {
+            const error = new Error('User not authorized to delete this blog')
+            error.status = 403
+            throw error
+        }
     } else {
         const error = new Error('Blog not found')
         error.status = 404
