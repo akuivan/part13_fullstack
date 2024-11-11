@@ -1,5 +1,4 @@
 const { Model, DataTypes } = require('sequelize')
-
 const { sequelize } = require('../util/db')
 
 class ReadingList extends Model {}
@@ -17,6 +16,7 @@ ReadingList.init({
       model: 'users',
       key: 'id'
     },
+    field: 'user_id'
   },
   blogId: {
     type: DataTypes.INTEGER,
@@ -25,10 +25,11 @@ ReadingList.init({
       model: 'blogs',
       key: 'id'
     },
+    field: 'blog_id'
   },
   read: {
     type: DataTypes.BOOLEAN,
-    defaultValue: false  // Default is unread
+    defaultValue: false
   }
 }, {
   sequelize,

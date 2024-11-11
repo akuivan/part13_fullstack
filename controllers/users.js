@@ -24,6 +24,30 @@ router.get('/', async (req, res) => {
   res.json(users)
 })
 
+router.get('/:id', async (req, res) => {
+    const { id } = req.params
+  
+    const user = await User.findByPk(id, {
+      include: {
+        model: Blog,
+        through: { attributes: [] },  // Exclude the "through" table attributes (like "read" status)
+        attributes: ['id', 'url', 'title', 'author', 'likes', 'year'] 
+      }
+    })
+  
+    if (user) {
+      res.json({
+        name: user.name,
+        username: user.username,
+        readings: user.blogs  // The blogs associated with the user (from the reading list)
+      })
+    } else {
+      const error = new Error('User not found')
+      error.status = 404
+      throw error
+    }
+})
+
 router.put('/:username', async (req, res) => {
     const { username } = req.params
     const { username: newUsername } = req.body
