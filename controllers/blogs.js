@@ -55,6 +55,10 @@ router.get('/', async (req, res) => {
 })
 
 router.post('/', tokenExtractor, async (req, res) => {
+    if (req.body.year && (req.body.year < 1991 || req.body.year > new Date().getFullYear())) {
+        return res.status(400).json({ error: 'Invalid year. It must be between 1991 and the current year.' })
+    }
+
     const user = await User.findByPk(req.decodedToken.id)
     if(user){
         const blog = await Blog.create({...req.body, userId: user.id, date: new Date()})
