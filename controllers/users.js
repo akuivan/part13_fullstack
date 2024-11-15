@@ -30,17 +30,33 @@ router.get('/:id', async (req, res) => {
     const user = await User.findByPk(id, {
       include: {
         model: Blog,
-        through: { attributes: [] },  // Exclude the "through" table attributes (like "read" status)
+        through: { attributes: ['read', 'id'] },
         attributes: ['id', 'url', 'title', 'author', 'likes', 'year'] 
       }
     })
   
     if (user) {
-      res.json({
+      const response = {
         name: user.name,
         username: user.username,
-        readings: user.blogs  // The blogs associated with the user (from the reading list)
-      })
+        readings: user.blogs.map(blog => {
+          const readinglist = blog.ReadingList ? [{
+            read: blog.ReadingList.read,
+            id: blog.ReadingList.id
+          }] : []  // Empty array if no join table entry
+
+          return {
+            id: blog.id,
+            url: blog.url,
+            title: blog.title,
+            author: blog.author,
+            likes: blog.likes,
+            year: blog.year,
+            readinglists: readinglist.length > 0 ? readinglist : []  // Ensure only one object in the array, or empty array
+          }
+        })
+      }
+      res.json(response)
     } else {
       const error = new Error('User not found')
       error.status = 404
