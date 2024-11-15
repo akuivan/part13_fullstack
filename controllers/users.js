@@ -25,43 +25,50 @@ router.get('/', async (req, res) => {
 })
 
 router.get('/:id', async (req, res) => {
-    const { id } = req.params
-  
-    const user = await User.findByPk(id, {
-      include: {
-        model: Blog,
-        through: { attributes: ['read', 'id'] },
-        attributes: ['id', 'url', 'title', 'author', 'likes', 'year'] 
-      }
-    })
-  
-    if (user) {
-      const response = {
-        name: user.name,
-        username: user.username,
-        readings: user.blogs.map(blog => {
-          const readinglist = blog.ReadingList ? [{
-            read: blog.ReadingList.read,
-            id: blog.ReadingList.id
-          }] : []  // Empty array if no join table entry
+  const { id } = req.params
+  const { read } = req.query // optional query parameter
 
-          return {
-            id: blog.id,
-            url: blog.url,
-            title: blog.title,
-            author: blog.author,
-            likes: blog.likes,
-            year: blog.year,
-            readinglists: readinglist.length > 0 ? readinglist : []  // Ensure only one object in the array, or empty array
-          }
-        })
+  // Prepare options for the query
+  const whereClause = {}
+  if (read !== undefined) {
+      whereClause.read = read === 'true' // Convert "true" or "false" string to boolean
+  }
+
+  const user = await User.findByPk(id, {
+      include: {
+          model: Blog,
+          through: { attributes: ['read', 'id'], where: whereClause },
+          attributes: ['id', 'url', 'title', 'author', 'likes', 'year'],
+      },
+  })
+
+  if (user) {
+      const response = {
+          name: user.name,
+          username: user.username,
+          readings: user.blogs.map((blog) => ({
+              id: blog.id,
+              url: blog.url,
+              title: blog.title,
+              author: blog.author,
+              likes: blog.likes,
+              year: blog.year,
+              readinglists: blog.ReadingList
+                  ? [
+                        {
+                            read: blog.ReadingList.read,
+                            id: blog.ReadingList.id,
+                        },
+                    ]
+                  : [],
+          })),
       }
       res.json(response)
-    } else {
+  } else {
       const error = new Error('User not found')
       error.status = 404
       throw error
-    }
+  }
 })
 
 router.put('/:username', async (req, res) => {
