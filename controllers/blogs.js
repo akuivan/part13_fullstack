@@ -1,11 +1,12 @@
 require('express-async-errors')
 
-const jwt = require('jsonwebtoken')
 const router = require('express').Router()
 const { Op } = require('sequelize')
 
 const { Blog, User } = require('../models')
-const { SECRET } = require('../util/config')
+
+const tokenValidityCheck = require('../middleware/tokenValidityCheck')
+const userDisabledCheck = require('../middleware/userDisabledCheck')
 
 const blogFinder = async (req, res, next) => {
     req.blog = await Blog.findByPk(req.params.id)
@@ -17,20 +18,6 @@ const errorHandler = (err, req, res, next) => {
     const status = err.status || 500 // Default to 500 if no status is set
     const message = err.message || 'Internal Server Error'
     res.status(status).json({ error: message })
-}
-
-const tokenExtractor = (req, res, next) => {
-    const authorization = req.get('authorization')
-    if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
-      try {
-        req.decodedToken = jwt.verify(authorization.substring(7), SECRET)
-      } catch{
-        return res.status(401).json({ error: 'token invalid' })
-      }
-    }  else {
-      return res.status(401).json({ error: 'token missing' })
-    }
-    next()
 }
 
 router.get('/', async (req, res) => {
@@ -54,7 +41,7 @@ router.get('/', async (req, res) => {
     res.json(blogs)
 })
 
-router.post('/', tokenExtractor, async (req, res) => {
+router.post('/', tokenValidityCheck, userDisabledCheck, async (req, res) => {
     if (req.body.year && (req.body.year < 1991 || req.body.year > new Date().getFullYear())) {
         return res.status(400).json({ error: 'Invalid year. It must be between 1991 and the current year.' })
     }
@@ -70,7 +57,7 @@ router.post('/', tokenExtractor, async (req, res) => {
     }
 })
 
-router.delete('/:id', tokenExtractor, blogFinder, async (req, res) => {
+router.delete('/:id', tokenValidityCheck, userDisabledCheck, blogFinder, async (req, res) => {
     if (req.blog) {
         // Check if the requesting user is the same as the blog's user
         if (req.blog.userId === req.decodedToken.id) {

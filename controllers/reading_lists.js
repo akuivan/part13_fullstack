@@ -2,31 +2,16 @@ require('express-async-errors')
 
 const router = require('express').Router()
 
-const jwt = require('jsonwebtoken')
-
 const { ReadingList, User, Blog } = require('../models')
-const { SECRET } = require('../util/config')
 
+const tokenValidityCheck = require('../middleware/tokenValidityCheck')
+const userDisabledCheck = require('../middleware/userDisabledCheck')
 
 const errorHandler = (err, req, res, next) => {
     console.error(err)
     const status = err.status || 500 // Default to 500 if no status is set
     const message = err.message || 'Internal Server Error'
     res.status(status).json({ error: message })
-}
-
-const tokenExtractor = (req, res, next) => {
-    const authorization = req.get('authorization')
-    if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
-      try {
-        req.decodedToken = jwt.verify(authorization.substring(7), SECRET)
-      } catch{
-        return res.status(401).json({ error: 'token invalid' })
-      }
-    }  else {
-      return res.status(401).json({ error: 'token missing' })
-    }
-    next()
 }
 
 router.post('/', async (req, res) => {
@@ -55,7 +40,7 @@ router.post('/', async (req, res) => {
     }
 })
 
-router.put('/:id', tokenExtractor, async (req,res) => {
+router.put('/:id', tokenValidityCheck, userDisabledCheck, async (req,res) => {
     const readingListId = req.params.id
     const { read }= req.body
 
